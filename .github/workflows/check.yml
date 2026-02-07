@@ -24,7 +24,7 @@ jobs:
           python-version: '3.9'
 
       - name: Instalar librerías
-        run: pip install requests # Instala la librería para consultar la API
+        run: pip install requests "requests[socks]" pysocks  # Instala la librería para consultar la API
 
       - name: Ejecutar script
         # Aquí conectamos tus "Secrets" con el script de Python
@@ -34,4 +34,8 @@ jobs:
           EMAIL_DESTINO: ${{ secrets.EMAIL_DESTINO }}
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+         # AGREGAMOS LAS NUEVAS VARIABLES DE NORDVPN
+          PROXY_HOST: ${{ secrets.PROXY_HOST }}
+          PROXY_USER: ${{ secrets.PROXY_USER }}
+          PROXY_PASS: ${{ secrets.PROXY_PASS }}
         run: python monitor_citas.py
