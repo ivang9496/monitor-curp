@@ -4,8 +4,8 @@ import os
 from email.message import EmailMessage
 
 # --- SIN PROXIES ---
-# Al usar la instalación nativa, toda la máquina ya está en la VPN.
-# No necesitamos configuración extra aquí.
+# La máquina ya está conectada a la VPN por OpenVPN. 
+# Navegamos "directo".
 
 # --- DATOS DEL CORREO ---
 EMAIL_USER = os.environ.get('EMAIL_USER')
@@ -24,7 +24,7 @@ HEADERS = {
 def enviar_correo(mensaje_cuerpo):
     msg = EmailMessage()
     msg.set_content(mensaje_cuerpo, charset='utf-8')
-    msg['Subject'] = '¡CITAS DISPONIBLES (Nativa)!'
+    msg['Subject'] = '¡CITAS DISPONIBLES (GitHub OpenVPN)!'
     msg['From'] = EMAIL_USER
     msg['To'] = EMAIL_DESTINO
 
@@ -40,7 +40,8 @@ def enviar_correo(mensaje_cuerpo):
 def verificar_horarios(fecha):
     try:
         payload = {"fecha": fecha}
-        response = requests.post(URL_HORARIOS, headers=HEADERS, json=payload, timeout=30)
+        # Timeout de 20s
+        response = requests.post(URL_HORARIOS, headers=HEADERS, json=payload, timeout=20)
         if response.status_code == 200:
             data = response.json()
             horarios = data.get('result', {}).get('horarios', [])
@@ -50,10 +51,10 @@ def verificar_horarios(fecha):
     return False
 
 def verificar_citas():
-    print("🌍 Consultando Xalapa (vía VPN Nativa)...")
+    print("🌍 Consultando Xalapa desde GitHub (IP Mexicana)...")
     try:
-        # Hacemos la petición directa (la VPN del sistema se encarga del resto)
-        response = requests.post(URL_DIAS, headers=HEADERS, json={}, timeout=30)
+        # Petición directa
+        response = requests.post(URL_DIAS, headers=HEADERS, json={}, timeout=20)
         
         if response.status_code != 200:
             print(f"❌ Error HTTP: {response.status_code}")
