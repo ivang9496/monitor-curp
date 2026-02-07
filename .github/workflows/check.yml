@@ -1,22 +1,18 @@
-name: Monitor de Citas Xalapa
+name: Monitor NordVPN
 
-# Controla cuándo se ejecuta el script
 on:
   schedule:
-    # Este cron significa: "Ejecutar cada 20 minutos"
-    # El orden es: (minuto) (hora) (día) (mes) (día_semana)
-    - cron: '*/20 * * * *' 
-  
-  # Esto permite que tú le piques a un botón y se ejecute manualmente para probar
-  workflow_dispatch: 
+    # Se ejecuta cada 20 minutos
+    - cron: '*/20 * * * *'
+  # Permite ejecutarlo manualmente desde la pestaña Actions
+  workflow_dispatch:
 
 jobs:
   build:
-    runs-on: ubuntu-latest # Usa un servidor Linux de GitHub
-
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout código
-        uses: actions/checkout@v3 # Descarga tu script en el servidor
+        uses: actions/checkout@v3
 
       - name: Configurar Python
         uses: actions/setup-python@v4
@@ -24,17 +20,16 @@ jobs:
           python-version: '3.9'
 
       - name: Instalar librerías
-        run: pip install requests "requests[socks]" pysocks  # Instala la librería para consultar la API
+        # Instalamos requests con soporte para SOCKS (Proxies)
+        run: pip install requests "requests[socks]" pysocks
 
       - name: Ejecutar script
-        # Aquí conectamos tus "Secrets" con el script de Python
         env:
+          # Variables de Correo
           EMAIL_USER: ${{ secrets.EMAIL_USER }}
           EMAIL_PASS: ${{ secrets.EMAIL_PASS }}
           EMAIL_DESTINO: ${{ secrets.EMAIL_DESTINO }}
-          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-         # AGREGAMOS LAS NUEVAS VARIABLES DE NORDVPN
+          # Variables de NordVPN (Proxy)
           PROXY_HOST: ${{ secrets.PROXY_HOST }}
           PROXY_USER: ${{ secrets.PROXY_USER }}
           PROXY_PASS: ${{ secrets.PROXY_PASS }}
