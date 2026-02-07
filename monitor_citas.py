@@ -3,66 +3,69 @@ import smtplib
 import os
 from email.message import EmailMessage
 
-# --- CONFIGURACIÓN ---
-# --- CONFIGURACIÓN ACTUALIZADA ---
-URL_API = "https://digital.xalapa.gob.mx/citas_curp/api/dias_disponibles"
+# --- CONFIGURACIÓN DE PROXY NORDVPN ---
+PROXY_HOST = os.environ.get('PROXY_HOST')
+PROXY_USER = os.environ.get('PROXY_USER')
+PROXY_PASS = os.environ.get('PROXY_PASS')
 
-HEADERS = {
-    'Content-Type': 'application/json',
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-    'Referer': 'https://digital.xalapa.gob.mx/citas_curp',
-    'Origin': 'https://digital.xalapa.gob.mx'
+# Construimos la URL del proxy SOCKS5
+# Formato: socks5://usuario:contraseña@servidor:1080
+proxy_url = f"socks5://{PROXY_USER}:{PROXY_PASS}@{PROXY_HOST}:1080"
+
+proxies = {
+    'http': proxy_url,
+    'https': proxy_url
 }
 
-def enviar_telegram(mensaje):
-    token = os.environ.get('TELEGRAM_TOKEN')
-    chat_id = os.environ.get('TELEGRAM_CHAT_ID')
-    url = f"https://api.telegram.org/bot{token}/sendMessage"
-    payload = {"chat_id": chat_id, "text": mensaje}
-    
-    try:
-        requests.post(url, json=payload)
-        print("Notificación de Telegram enviada.")
-    except Exception as e:
-        print(f"Error en Telegram: {e}")
+# --- DATOS DEL CORREO ---
+EMAIL_USER = os.environ.get('EMAIL_USER')
+EMAIL_PASS = os.environ.get('EMAIL_PASS')
+EMAIL_DESTINO = os.environ.get('EMAIL_DESTINO')
+
+# --- CONFIGURACIÓN DE LA PÁGINA ---
+URL_API = "https://digital.xalapa.gob.mx/citas_curp/api/dias_disponibles"
+HEADERS = {
+    'Content-Type': 'application/json',
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+}
 
 def enviar_correo(mensaje_cuerpo):
-    email_user = os.environ.get('EMAIL_USER')
-    email_pass = os.environ.get('EMAIL_PASS')
-    # Si quieres que lleguen al mismo, usamos email_user como destino
-    email_destino = os.environ.get('EMAIL_DESTINO') or email_user 
-
     msg = EmailMessage()
-    msg.set_content(mensaje_cuerpo)
-    msg['Subject'] = '¡HAY CITAS CURP XALAPA!'
-    msg['From'] = email_user
-    msg['To'] = email_destino
+    msg.set_content(mensaje_cuerpo, charset='utf-8')
+    msg['Subject'] = 'CITAS DISPONIBLES (NORDVPN)'
+    msg['From'] = EMAIL_USER
+    msg['To'] = EMAIL_DESTINO
 
     try:
         server = smtplib.SMTP_SSL('smtp.gmail.com', 465)
-        server.login(email_user, email_pass)
+        server.login(EMAIL_USER, EMAIL_PASS)
         server.send_message(msg)
         server.quit()
-        print("Correo enviado con éxito.")
+        print("Correo enviado.")
     except Exception as e:
-        print(f"Error en Correo: {e}")
+        print(f"Error correo: {e}")
 
 def verificar_citas():
+    print("Conectando vía NordVPN...", end="")
     try:
-        response = requests.post(URL_API, headers=HEADERS, json={})
-        data = response.json()
-        result = data.get('result', {})
-        dias = result.get('dias_validos', [])
+        # AQUÍ ESTÁ LA MAGIA: pasamos el argumento 'proxies'
+        response = requests.post(URL_API, headers=HEADERS, json={}, proxies=proxies, timeout=30)
+        
+        if response.status_code != 200:
+            print(f" Falló la conexión (Status: {response.status_code})")
+            return
 
-        if dias and len(dias) > 0:
-            aviso = f"🚨 ¡CITAS DISPONIBLES! 🚨\nFechas: {', '.join(dias)}\nEntra ya: https://digital.xalapa.gob.mx/citas_curp"
-            
-            enviar_telegram(aviso)
-            enviar_correo(aviso)
+        data = response.json()
+        dias = data.get('result', {}).get('dias_validos', [])
+
+        if dias:
+            print(f" ¡ÉXITO! Días: {dias}")
+            enviar_correo(f"¡NordVPN funcionó! Hay citas: {dias}")
         else:
-            print("Sin disponibilidad aún.")
+            print(" Conexión exitosa, pero sin citas.")
+
     except Exception as e:
-        print(f"Error al consultar API: {e}")
+        print(f" Error de conexión con Proxy: {e}")
 
 if __name__ == "__main__":
     verificar_citas()
