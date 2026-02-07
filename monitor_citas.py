@@ -1,31 +1,14 @@
 import requests
 import smtplib
 import os
-import urllib.parse # Importante para limpiar la contraseña
 from email.message import EmailMessage
 
-# --- CREDENCIALES DEL PROXY (NORDVPN) ---
-PROXY_HOST = os.environ.get('PROXY_HOST')
-PROXY_USER = os.environ.get('PROXY_USER')
-PROXY_PASS = os.environ.get('PROXY_PASS')
-
-# --- PREPARAR LA CONEXIÓN (FIX DNS + ENCODING) ---
-if PROXY_HOST and PROXY_USER and PROXY_PASS:
-    # 1. Codificamos usuario y contraseña para evitar errores con símbolos raros
-    safe_user = urllib.parse.quote(PROXY_USER, safe='')
-    safe_pass = urllib.parse.quote(PROXY_PASS, safe='')
-    
-    # 2. Usamos 'socks5h' (con h) para que el DNS lo resuelva NordVPN (Remote DNS)
-    proxy_url = f"socks5h://{safe_user}:{safe_pass}@{PROXY_HOST}:1080"
-    
-    proxies = {
-        'http': proxy_url,
-        'https': proxy_url
-    }
-    print(f"🔒 Proxy configurado: {PROXY_HOST} (DNS Remoto activo)")
-else:
-    proxies = None
-    print("⚠️ SIN PROXY: Usando conexión directa (Probablemente falle).")
+# --- CONFIGURACIÓN SIMPLE ---
+# Ahora nos conectamos al contenedor de servicio que está en localhost
+proxies = {
+    'http': 'socks5://localhost:1080',
+    'https': 'socks5://localhost:1080'
+}
 
 # --- DATOS DEL CORREO ---
 EMAIL_USER = os.environ.get('EMAIL_USER')
@@ -44,7 +27,7 @@ HEADERS = {
 def enviar_correo(mensaje_cuerpo):
     msg = EmailMessage()
     msg.set_content(mensaje_cuerpo, charset='utf-8')
-    msg['Subject'] = '¡CITAS DISPONIBLES (NORDVPN)!'
+    msg['Subject'] = '¡CITAS DISPONIBLES (DOCKER)!'
     msg['From'] = EMAIL_USER
     msg['To'] = EMAIL_DESTINO
 
@@ -60,8 +43,8 @@ def enviar_correo(mensaje_cuerpo):
 def verificar_horarios(fecha):
     try:
         payload = {"fecha": fecha}
-        # Timeout extendido a 40s porque la redirección de DNS toma tiempo
-        response = requests.post(URL_HORARIOS, headers=HEADERS, json=payload, proxies=proxies, timeout=40)
+        # Timeout de 30s por si la VPN tarda un poco
+        response = requests.post(URL_HORARIOS, headers=HEADERS, json=payload, proxies=proxies, timeout=30)
         if response.status_code == 200:
             data = response.json()
             horarios = data.get('result', {}).get('horarios', [])
@@ -71,9 +54,9 @@ def verificar_horarios(fecha):
     return False
 
 def verificar_citas():
-    print("🌍 Conectando vía NordVPN...", end="")
+    print("🌍 Consultando Xalapa a través del túnel VPN Docker...", end="")
     try:
-        response = requests.post(URL_DIAS, headers=HEADERS, json={}, proxies=proxies, timeout=40)
+        response = requests.post(URL_DIAS, headers=HEADERS, json={}, proxies=proxies, timeout=30)
         
         if response.status_code != 200:
             print(f"❌ Error HTTP: {response.status_code}")
@@ -83,16 +66,16 @@ def verificar_citas():
         dias_reales = []
 
         if dias_habiles:
-            print(f"\n🔎 Días hábiles encontrados: {dias_habiles}")
+            print(f"\n🔎 Días hábiles: {dias_habiles}")
             for dia in dias_habiles:
                 if verificar_horarios(dia):
                     dias_reales.append(dia)
         
         if dias_reales:
-            print(f"\n🎉 ¡Citas reales!: {dias_reales}")
-            enviar_correo(f"¡HAY CITAS!: {dias_reales}\nLink: https://digital.xalapa.gob.mx/citas_curp")
+            print(f"\n🎉 ¡Citas encontradas!: {dias_reales}")
+            enviar_correo(f"¡Funciona! Citas en: {dias_reales}\nLink: https://digital.xalapa.gob.mx/citas_curp")
         else:
-            print("\n✅ Conexión OK. No hay horarios libres por el momento.")
+            print("\n✅ Conexión exitosa a través de México. No hay horarios libres.")
 
     except Exception as e:
         print(f"\n❌ Error de conexión: {e}")
