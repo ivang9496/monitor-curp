@@ -1,4 +1,4 @@
-name: Monitor Proxy TCP
+name: Monitor VPN Nativa
 
 on:
   schedule:
@@ -9,32 +9,34 @@ jobs:
   build:
     runs-on: ubuntu-latest
     
-    services:
-      nordvpn:
-        image: edgd1er/nordvpn-proxy:latest
-        ports:
-          - 1080:1080
-        env:
-          NORDVPN_TOKEN: ${{ secrets.NORDVPN_TOKEN }}
-          NORDVPN_COUNTRY: MX
-          # CAMBIO CRÍTICO 1: Usamos OpenVPN con TCP (el rompe-muros)
-          NORDVPN_TECHNOLOGY: OpenVPN
-          NORDVPN_PROTOCOL: TCP
-          # CAMBIO CRÍTICO 2: Servidores ofuscados para evitar detección
-          NORDVPN_OBFUSCATE: "on"
-          DNS: "8.8.8.8,8.8.4.4"
-        options: --cap-add NET_ADMIN --device /dev/net/tun
-
     steps:
       - name: Checkout código
         uses: actions/checkout@v3
 
-      - name: Esperar a que la VPN conecte
+      - name: Instalar NordVPN
         run: |
-          echo "Esperando 60 segundos para conexión TCP estable..."
-          sleep 60
-          # Verificamos si el contenedor sigue vivo
-          docker ps -a
+          # 1. Descargar el instalador oficial
+          wget -qnc https://repo.nordvpn.com/deb/nordvpn/debian/pool/main/nordvpn-release_1.0.0_all.deb
+          # 2. Instalar el repositorio
+          sudo dpkg -i nordvpn-release_1.0.0_all.deb
+          # 3. Actualizar e instalar la app
+          sudo apt-get update
+          sudo apt-get install -y nordvpn
+
+      - name: Conectar a México
+        env:
+          NORDVPN_TOKEN: ${{ secrets.NORDVPN_TOKEN }}
+        run: |
+          # 1. Iniciar sesión con el Token
+          sudo nordvpn login --token "$NORDVPN_TOKEN"
+          # 2. Configurar para máxima compatibilidad
+          sudo nordvpn set technology openvpn
+          sudo nordvpn set protocol tcp
+          sudo nordvpn set obfuscate on
+          # 3. Conectar a México
+          sudo nordvpn connect Mexico
+          # 4. Verificar IP (opcional, para ver en los logs que funcionó)
+          curl -s https://api.nordvpn.com/vpn/check/full | grep country
 
       - name: Configurar Python
         uses: actions/setup-python@v4
@@ -42,7 +44,7 @@ jobs:
           python-version: '3.9'
 
       - name: Instalar librerías
-        run: pip install requests "requests[socks]" pysocks
+        run: pip install requests
 
       - name: Ejecutar script
         env:
