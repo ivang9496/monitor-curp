@@ -1,18 +1,36 @@
-name: Monitor NordVPN
+name: Monitor VPN Docker
 
 on:
   schedule:
-    # Se ejecuta cada 20 minutos
-    - cron: '*/20 * * * *'
-  # Permite ejecutarlo manualmente desde la pestaña Actions
-  workflow_dispatch:
+    - cron: '*/20 * * * *' # Ejecuta cada 20 min
+  workflow_dispatch: # Botón manual
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    
+    # AQUÍ ESTÁ LA MAGIA: Arrancamos el contenedor VPN antes que nada
+    services:
+      nordvpn:
+        image: edgd1er/nordvpn-proxy:latest
+        ports:
+          - 1080:1080 # Exponemos el puerto del proxy al script
+        env:
+          # Usamos tus secretos actuales (asegúrate de que sean los de credenciales de servicio)
+          NORDVPN_USER: ${{ secrets.PROXY_USER }}
+          NORDVPN_PASS: ${{ secrets.PROXY_PASS }}
+          NORDVPN_COUNTRY: MX # Forzamos conexión a México
+          NORDVPN_PROTOCOL: UDP
+          NORDVPN_TECHNOLOGY: NordLynx # Más rápido y moderno que OpenVPN
+        options: --cap-add NET_ADMIN --device /dev/net/tun # Permisos necesarios para VPN
+
     steps:
       - name: Checkout código
         uses: actions/checkout@v3
+
+      - name: Esperar a que la VPN conecte
+        # Damos unos segundos para que el contenedor establezca el túnel
+        run: sleep 15
 
       - name: Configurar Python
         uses: actions/setup-python@v4
@@ -20,17 +38,13 @@ jobs:
           python-version: '3.9'
 
       - name: Instalar librerías
-        # Instalamos requests con soporte para SOCKS (Proxies)
         run: pip install requests "requests[socks]" pysocks
 
       - name: Ejecutar script
         env:
-          # Variables de Correo
           EMAIL_USER: ${{ secrets.EMAIL_USER }}
           EMAIL_PASS: ${{ secrets.EMAIL_PASS }}
           EMAIL_DESTINO: ${{ secrets.EMAIL_DESTINO }}
-          # Variables de NordVPN (Proxy)
-          PROXY_HOST: ${{ secrets.PROXY_HOST }}
-          PROXY_USER: ${{ secrets.PROXY_USER }}
-          PROXY_PASS: ${{ secrets.PROXY_PASS }}
+          # Ya no necesitamos pasarle host/user/pass del proxy al script
+          # porque ahora el proxy es "local" (el contenedor de al lado)
         run: python monitor_citas.py
