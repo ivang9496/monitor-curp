@@ -1,4 +1,4 @@
-name: Monitor VPN Nativa
+name: Monitor OpenVPN Nativo
 
 on:
   schedule:
@@ -13,31 +13,38 @@ jobs:
       - name: Checkout código
         uses: actions/checkout@v3
 
-      - name: Instalar NordVPN
+      - name: Instalar OpenVPN
         run: |
-          # 1. Descargar el instalador oficial
-          wget -qnc https://repo.nordvpn.com/deb/nordvpn/debian/pool/main/nordvpn-release_1.0.0_all.deb
-          # 2. Instalar el repositorio
-          sudo dpkg -i nordvpn-release_1.0.0_all.deb
-          # 3. Actualizar e instalar la app
           sudo apt-get update
-          sudo apt-get install -y nordvpn
+          sudo apt-get install -y openvpn unzip
 
-      - name: Conectar a México
+      - name: Configurar VPN (México)
         env:
-          NORDVPN_TOKEN: ${{ secrets.NORDVPN_TOKEN }}
+          # IMPORTANTE: Aquí usamos las credenciales largas (Service Credentials)
+          VPN_USER: ${{ secrets.PROXY_USER }}
+          VPN_PASS: ${{ secrets.PROXY_PASS }}
         run: |
-          # 1. Iniciar sesión con el Token
-          sudo nordvpn login --token "$NORDVPN_TOKEN"
-          # 2. Configurar para máxima compatibilidad
-          sudo nordvpn set technology openvpn
-          sudo nordvpn set protocol tcp
-          sudo nordvpn set obfuscate on
-          # 3. Conectar a México
-          sudo nordvpn connect Mexico
-          # 4. Verificar IP (opcional, para ver en los logs que funcionó)
-          curl -s https://api.nordvpn.com/vpn/check/full | grep country
+          # 1. Crear archivo de credenciales (auth.txt)
+          echo "$VPN_USER" > auth.txt
+          echo "$VPN_PASS" >> auth.txt
+          chmod 600 auth.txt
 
+          # 2. Descargar configuración de un servidor TCP en México (mx162)
+          # Usamos TCP porque GitHub no lo bloquea
+          wget https://downloads.nordcdn.com/configs/files/ovpn_tcp/servers/mx162.nordvpn.com.tcp.ovpn -O mexico.ovpn
+
+          # 3. Iniciar la VPN en modo demonio (segundo plano)
+          sudo openvpn --config mexico.ovpn --auth-user-pass auth.txt --daemon
+
+          # 4. Esperar a que conecte (damos 30 segundos)
+          echo "Conectando a México..."
+          sleep 30
+
+      - name: Verificar IP (Prueba de conexión)
+        run: |
+          # Esto nos dirá si realmente estamos en México
+          curl -s https://ipinfo.io/country
+          
       - name: Configurar Python
         uses: actions/setup-python@v4
         with:
