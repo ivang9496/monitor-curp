@@ -1,7 +1,7 @@
 import requests
 import smtplib
 import os
-from email.msg import EmailMessage
+from email.message import EmailMessage
 
 # --- CONFIGURACIÓN ---
 URL_API = "https://digital.xalapa.gob.mx/citas_curp/api/dias_disponibles"
@@ -59,3 +59,4 @@ def verificar_citas():
 
 if __name__ == "__main__":
     verificar_citas()
+
