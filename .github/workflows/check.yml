@@ -1,4 +1,4 @@
-name: Monitor Proxy OpenVPN
+name: Monitor Proxy TCP
 
 on:
   schedule:
@@ -15,12 +15,14 @@ jobs:
         ports:
           - 1080:1080
         env:
-          # Usamos tu Token
           NORDVPN_TOKEN: ${{ secrets.NORDVPN_TOKEN }}
           NORDVPN_COUNTRY: MX
-          # CAMBIO CLAVE: Usamos OpenVPN en lugar de NordLynx
+          # CAMBIO CRÍTICO 1: Usamos OpenVPN con TCP (el rompe-muros)
           NORDVPN_TECHNOLOGY: OpenVPN
-          NORDVPN_PROTOCOL: UDP
+          NORDVPN_PROTOCOL: TCP
+          # CAMBIO CRÍTICO 2: Servidores ofuscados para evitar detección
+          NORDVPN_OBFUSCATE: "on"
+          DNS: "8.8.8.8,8.8.4.4"
         options: --cap-add NET_ADMIN --device /dev/net/tun
 
     steps:
@@ -29,8 +31,10 @@ jobs:
 
       - name: Esperar a que la VPN conecte
         run: |
-          echo "Esperando 60 segundos a que OpenVPN arranque..."
+          echo "Esperando 60 segundos para conexión TCP estable..."
           sleep 60
+          # Verificamos si el contenedor sigue vivo
+          docker ps -a
 
       - name: Configurar Python
         uses: actions/setup-python@v4
