@@ -1,4 +1,4 @@
-name: Monitor Proxy Token
+name: Monitor Proxy OpenVPN
 
 on:
   schedule:
@@ -15,13 +15,12 @@ jobs:
         ports:
           - 1080:1080
         env:
-          # Usamos el TOKEN que generaste (asegúrate de que el secret se llame NORDVPN_TOKEN)
+          # Usamos tu Token
           NORDVPN_TOKEN: ${{ secrets.NORDVPN_TOKEN }}
           NORDVPN_COUNTRY: MX
+          # CAMBIO CLAVE: Usamos OpenVPN en lugar de NordLynx
+          NORDVPN_TECHNOLOGY: OpenVPN
           NORDVPN_PROTOCOL: UDP
-          NORDVPN_TECHNOLOGY: NordLynx
-          # Importante: Indicamos que queremos el proxy HTTP y SOCKS activados
-          DNS: "1.1.1.1,8.8.8.8"
         options: --cap-add NET_ADMIN --device /dev/net/tun
 
     steps:
@@ -30,8 +29,8 @@ jobs:
 
       - name: Esperar a que la VPN conecte
         run: |
-          echo "Dando tiempo al contenedor para arrancar..."
-          sleep 45 # Damos 45 segundos para asegurar que el proxy esté listo
+          echo "Esperando 60 segundos a que OpenVPN arranque..."
+          sleep 60
 
       - name: Configurar Python
         uses: actions/setup-python@v4
