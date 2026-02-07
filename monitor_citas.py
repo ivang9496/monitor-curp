@@ -4,8 +4,15 @@ import os
 from email.message import EmailMessage
 
 # --- CONFIGURACIÓN ---
+# --- CONFIGURACIÓN ACTUALIZADA ---
 URL_API = "https://digital.xalapa.gob.mx/citas_curp/api/dias_disponibles"
-HEADERS = {'Content-Type': 'application/json'}
+
+HEADERS = {
+    'Content-Type': 'application/json',
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+    'Referer': 'https://digital.xalapa.gob.mx/citas_curp',
+    'Origin': 'https://digital.xalapa.gob.mx'
+}
 
 def enviar_telegram(mensaje):
     token = os.environ.get('TELEGRAM_TOKEN')
@@ -59,4 +66,5 @@ def verificar_citas():
 
 if __name__ == "__main__":
     verificar_citas()
+
 
