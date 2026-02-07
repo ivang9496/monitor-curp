@@ -1,4 +1,4 @@
-name: Monitor OpenVPN Nativo
+name: Monitor OpenVPN Auto-Detect
 
 on:
   schedule:
@@ -13,38 +13,48 @@ jobs:
       - name: Checkout código
         uses: actions/checkout@v3
 
-      - name: Instalar OpenVPN
+      - name: Instalar Herramientas
         run: |
           sudo apt-get update
-          sudo apt-get install -y openvpn unzip
+          sudo apt-get install -y openvpn unzip jq curl
 
-      - name: Configurar VPN (México)
+      - name: Configurar VPN (Auto-México)
         env:
-          # IMPORTANTE: Aquí usamos las credenciales largas (Service Credentials)
           VPN_USER: ${{ secrets.PROXY_USER }}
           VPN_PASS: ${{ secrets.PROXY_PASS }}
         run: |
-          # 1. Crear archivo de credenciales (auth.txt)
+          # 1. Crear credenciales
           echo "$VPN_USER" > auth.txt
           echo "$VPN_PASS" >> auth.txt
           chmod 600 auth.txt
 
-          # 2. Descargar configuración de un servidor TCP en México (mx162)
-          # Usamos TCP porque GitHub no lo bloquea
-          wget https://downloads.nordcdn.com/configs/files/ovpn_tcp/servers/mx162.nordvpn.com.tcp.ovpn -O mexico.ovpn
+          # 2. PREGUNTAR a NordVPN cuál es el mejor servidor TCP en México (ID 140)
+          echo "Buscando el mejor servidor en México..."
+          SERVER_INFO=$(curl -s "https://api.nordvpn.com/v1/servers/recommendations?filters\[country_id\]=140&filters\[servers_technologies\]\[identifier\]=openvpn_tcp&limit=1")
+          
+          # Extraer el nombre del servidor (ej. mx165.nordvpn.com)
+          HOSTNAME=$(echo $SERVER_INFO | jq -r '.[0].hostname')
+          echo "Servidor seleccionado: $HOSTNAME"
 
-          # 3. Iniciar la VPN en modo demonio (segundo plano)
+          # 3. Descargar la configuración de ESE servidor específico
+          URL="https://downloads.nordcdn.com/configs/files/ovpn_tcp/servers/${HOSTNAME}.tcp.ovpn"
+          echo "Descargando configuración de: $URL"
+          wget -q $URL -O mexico.ovpn
+
+          # 4. Iniciar la VPN
           sudo openvpn --config mexico.ovpn --auth-user-pass auth.txt --daemon
 
-          # 4. Esperar a que conecte (damos 30 segundos)
-          echo "Conectando a México..."
+          # 5. Esperar conexión
+          echo "Esperando conexión..."
           sleep 30
 
-      - name: Verificar IP (Prueba de conexión)
+      - name: Verificar IP (Prueba de Fuego)
         run: |
-          # Esto nos dirá si realmente estamos en México
-          curl -s https://ipinfo.io/country
-          
+          # Verificamos si la IP cambió a México
+          COUNTRY=$(curl -s https://ipinfo.io/country)
+          IP=$(curl -s https://api.ipify.org)
+          echo "Estás navegando desde: $COUNTRY (IP: $IP)"
+
       - name: Configurar Python
         uses: actions/setup-python@v4
         with:
