@@ -1,4 +1,4 @@
-name: Monitor VPN Token
+name: Monitor Proxy Token
 
 on:
   schedule:
@@ -11,15 +11,18 @@ jobs:
     
     services:
       nordvpn:
-        image: ghcr.io/bubuntux/nordvpn:latest # Imagen oficial recomendada y más ligera
+        image: edgd1er/nordvpn-proxy:latest
         ports:
           - 1080:1080
         env:
-          TOKEN: ${{ secrets.NORDVPN_TOKEN }} # Usamos el Token nuevo
-          CONNECT: Mexico # Conectar a México
-          TECHNOLOGY: NordLynx
-          NETWORK: "10.5.0.0/16" # Red interna para evitar conflictos
-        options: --cap-add=NET_ADMIN --device /dev/net/tun --name nordvpn
+          # Usamos el TOKEN que generaste (asegúrate de que el secret se llame NORDVPN_TOKEN)
+          NORDVPN_TOKEN: ${{ secrets.NORDVPN_TOKEN }}
+          NORDVPN_COUNTRY: MX
+          NORDVPN_PROTOCOL: UDP
+          NORDVPN_TECHNOLOGY: NordLynx
+          # Importante: Indicamos que queremos el proxy HTTP y SOCKS activados
+          DNS: "1.1.1.1,8.8.8.8"
+        options: --cap-add NET_ADMIN --device /dev/net/tun
 
     steps:
       - name: Checkout código
@@ -27,8 +30,8 @@ jobs:
 
       - name: Esperar a que la VPN conecte
         run: |
-          echo "Esperando a la VPN..."
-          sleep 30 # Damos 30 segundos para asegurar conexión
+          echo "Dando tiempo al contenedor para arrancar..."
+          sleep 45 # Damos 45 segundos para asegurar que el proxy esté listo
 
       - name: Configurar Python
         uses: actions/setup-python@v4
