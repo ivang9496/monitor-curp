@@ -1,36 +1,34 @@
-name: Monitor VPN Docker
+name: Monitor VPN Token
 
 on:
   schedule:
-    - cron: '*/20 * * * *' # Ejecuta cada 20 min
-  workflow_dispatch: # Botón manual
+    - cron: '*/20 * * * *'
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
     
-    # AQUÍ ESTÁ LA MAGIA: Arrancamos el contenedor VPN antes que nada
     services:
       nordvpn:
-        image: edgd1er/nordvpn-proxy:latest
+        image: ghcr.io/bubuntux/nordvpn:latest # Imagen oficial recomendada y más ligera
         ports:
-          - 1080:1080 # Exponemos el puerto del proxy al script
+          - 1080:1080
         env:
-          # Usamos tus secretos actuales (asegúrate de que sean los de credenciales de servicio)
-          NORDVPN_USER: ${{ secrets.PROXY_USER }}
-          NORDVPN_PASS: ${{ secrets.PROXY_PASS }}
-          NORDVPN_COUNTRY: MX # Forzamos conexión a México
-          NORDVPN_PROTOCOL: UDP
-          NORDVPN_TECHNOLOGY: NordLynx # Más rápido y moderno que OpenVPN
-        options: --cap-add NET_ADMIN --device /dev/net/tun # Permisos necesarios para VPN
+          TOKEN: ${{ secrets.NORDVPN_TOKEN }} # Usamos el Token nuevo
+          CONNECT: Mexico # Conectar a México
+          TECHNOLOGY: NordLynx
+          NETWORK: "10.5.0.0/16" # Red interna para evitar conflictos
+        options: --cap-add=NET_ADMIN --device /dev/net/tun --name nordvpn
 
     steps:
       - name: Checkout código
         uses: actions/checkout@v3
 
       - name: Esperar a que la VPN conecte
-        # Damos unos segundos para que el contenedor establezca el túnel
-        run: sleep 15
+        run: |
+          echo "Esperando a la VPN..."
+          sleep 30 # Damos 30 segundos para asegurar conexión
 
       - name: Configurar Python
         uses: actions/setup-python@v4
@@ -45,6 +43,4 @@ jobs:
           EMAIL_USER: ${{ secrets.EMAIL_USER }}
           EMAIL_PASS: ${{ secrets.EMAIL_PASS }}
           EMAIL_DESTINO: ${{ secrets.EMAIL_DESTINO }}
-          # Ya no necesitamos pasarle host/user/pass del proxy al script
-          # porque ahora el proxy es "local" (el contenedor de al lado)
         run: python monitor_citas.py
