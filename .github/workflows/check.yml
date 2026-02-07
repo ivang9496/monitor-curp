@@ -1,0 +1,37 @@
+name: Monitor de Citas Xalapa
+
+# Controla cuándo se ejecuta el script
+on:
+  schedule:
+    # Este cron significa: "Ejecutar cada 20 minutos"
+    # El orden es: (minuto) (hora) (día) (mes) (día_semana)
+    - cron: '*/20 * * * *' 
+  
+  # Esto permite que tú le piques a un botón y se ejecute manualmente para probar
+  workflow_dispatch: 
+
+jobs:
+  build:
+    runs-on: ubuntu-latest # Usa un servidor Linux de GitHub
+
+    steps:
+      - name: Checkout código
+        uses: actions/checkout@v3 # Descarga tu script en el servidor
+
+      - name: Configurar Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Instalar librerías
+        run: pip install requests # Instala la librería para consultar la API
+
+      - name: Ejecutar script
+        # Aquí conectamos tus "Secrets" con el script de Python
+        env:
+          EMAIL_USER: ${{ secrets.EMAIL_USER }}
+          EMAIL_PASS: ${{ secrets.EMAIL_PASS }}
+          EMAIL_DESTINO: ${{ secrets.EMAIL_DESTINO }}
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: python monitor_citas.py
